@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './Login';
+import Register from './Register';
 import DashboardProfesional from './DashboardProfesional';
 import DashboardCompania from './DashboardCompania';
 import BackofficeAdmin from './BackofficeAdmin';
@@ -9,9 +10,10 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/registro" element={<Register />} /> {}
         <Route path="/dashboard" element={<DashboardProfesional />} />
         <Route path="/empresa" element={<DashboardCompania />} />
-        <Route path="/admin" element={<BackofficeAdmin />} /> {}
+        <Route path="/admin" element={<BackofficeAdmin />} />
       </Routes>
     </BrowserRouter>
   );
