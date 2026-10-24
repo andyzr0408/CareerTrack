@@ -18,6 +18,7 @@ return new class extends Migration
 
             // Un profesional no puede postularse dos veces a la misma oferta
             $table->unique(['professional_id', 'job_offer_id']);
+            $table->index('job_offer_id'); // listar postulantes de una oferta
         });
     }
 
