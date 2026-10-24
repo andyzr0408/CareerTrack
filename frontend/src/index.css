@@ -1,3 +1,76 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    --canvas: 243 246 251;
+    --surface: 255 255 255;
+    --sunken: 236 240 247;
+    --ink: 14 26 47;
+    --muted: 88 102 128;
+    --line: 220 227 239;
+    --brand: 29 78 216;
+    --brand-ink: 255 255 255;
+    --brand-soft: 228 236 253;
+    --ok: 13 133 94;
+    --ok-soft: 220 244 234;
+    --warn: 150 90 6;
+    --warn-soft: 253 243 214;
+    --bad: 190 24 93;
+    --bad-soft: 252 228 238;
+    color-scheme: light;
+  }
+
+  .dark {
+    --canvas: 9 15 28;
+    --surface: 16 25 43;
+    --sunken: 12 20 36;
+    --ink: 230 236 247;
+    --muted: 150 163 187;
+    --line: 36 49 74;
+    --brand: 105 156 255;
+    --brand-ink: 8 15 30;
+    --brand-soft: 22 38 74;
+    --ok: 52 211 153;
+    --ok-soft: 12 56 44;
+    --warn: 245 190 70;
+    --warn-soft: 60 44 12;
+    --bad: 251 113 160;
+    --bad-soft: 66 20 40;
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+
+  :focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-brand;
+  }
+
+  ::selection {
+    @apply bg-brand/25;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
