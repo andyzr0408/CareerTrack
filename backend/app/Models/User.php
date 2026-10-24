@@ -49,6 +49,11 @@ class User extends Authenticatable
         return $this->hasOne(Company::class);
     }
 
+    public function scopeActive($query)
+    {
+        return $query->where('status', self::STATUS_ACTIVE);
+    }
+
     public function hasRole(string $name): bool
     {
         return $this->role?->name === $name;
@@ -57,6 +62,16 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->hasRole(Role::ADMIN);
+    }
+
+    public function isProfessional(): bool
+    {
+        return $this->hasRole(Role::PROFESSIONAL);
+    }
+
+    public function isCompany(): bool
+    {
+        return $this->hasRole(Role::COMPANY);
     }
 
     public function isActive(): bool

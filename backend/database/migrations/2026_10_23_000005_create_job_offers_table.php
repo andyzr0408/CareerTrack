@@ -20,6 +20,9 @@ return new class extends Migration
             // Moderación, la controla el administrador
             $table->enum('moderation_status', ['pending', 'approved', 'blocked'])->default('pending');
             $table->timestamps();
+
+            // Acelera el listado de ofertas visibles (activas y aprobadas)
+            $table->index(['status', 'moderation_status']);
         });
     }
 

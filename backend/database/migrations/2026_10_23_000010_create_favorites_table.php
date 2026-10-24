@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('job_offer_id')->constrained('job_offers')->cascadeOnDelete();
 
             $table->unique(['professional_id', 'job_offer_id']);
+            $table->index('job_offer_id');
         });
     }
 

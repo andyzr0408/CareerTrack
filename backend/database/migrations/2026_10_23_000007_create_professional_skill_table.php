@@ -15,6 +15,7 @@ return new class extends Migration
             $table->foreignId('skill_id')->constrained('skills')->cascadeOnDelete();
 
             $table->unique(['professional_id', 'skill_id']);
+            $table->index('skill_id'); // buscar profesionales por skill
         });
     }
 

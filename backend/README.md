@@ -8,7 +8,23 @@ cp .env.example .env
 php artisan key:generate
 php artisan migrate:fresh --seed
 ```
-Usuario administrador de prueba: `admin@careertrack.test` / `password`.
+## Cuentas de prueba (clave: `password`)
+| Correo | Tipo |
+|---|---|
+| `admin@careertrack.test` | Administrador |
+| `empresa@careertrack.test` | Empresa (TechVentures Inc., con ofertas en cada estado) |
+| `profesional@careertrack.test` | Profesional (con skills, una postulación y un favorito) |
+| `inactivo@careertrack.test` | Profesional dado de baja (no debe poder entrar) |
+
+Además se generan 5 empresas y 15 profesionales aleatorios con ofertas, postulaciones y favoritos.
+
+## Pruebas
+```bash
+php artisan test
+```
+
+## Documentación
+Modelo de datos y rutas por tipo de usuario: carpeta `docs/` en la raíz del repositorio.
 
 ## Modelo de datos
 `roles`, `users`, `professional_profiles`, `companies`, `job_offers`, `skills`,
