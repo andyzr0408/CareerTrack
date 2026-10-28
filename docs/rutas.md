@@ -1,7 +1,5 @@
 # Rutas de CareerTrack por tipo de usuario
 
-> Solo definición: estas rutas **no están implementadas todavía**. Sirven como contrato entre el frontend (React) y el backend (Laravel) y se construirán en las siguientes ramas.
-
 Hay tres tipos de usuario (tabla `roles`): **profesional**, **empresa** y **administrador**, más el visitante sin sesión. Las rutas de la API van bajo el prefijo `/api`. Una cuenta con `status = inactive` (baja lógica) no puede iniciar sesión.
 
 ## 1. Visitante (sin sesión)
