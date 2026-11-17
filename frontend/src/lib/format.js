@@ -1,13 +1,15 @@
-import { MODALITY } from '../data/mock';
+import { MODALITY } from '../data/constants';
 
 /** Cuánto coincide el perfil con la oferta, según las skills que pide la oferta. */
 export function matchOffer(offer, mySkills) {
-  const have = offer.skills.filter((s) => mySkills.includes(s));
-  const missing = offer.skills.filter((s) => !mySkills.includes(s));
-  const pct = offer.skills.length ? Math.round((have.length / offer.skills.length) * 100) : 0;
+  const wanted = offer.skills || [];
+  const have = wanted.filter((s) => mySkills.includes(s));
+  const missing = wanted.filter((s) => !mySkills.includes(s));
+  const pct = wanted.length ? Math.round((have.length / wanted.length) * 100) : 0;
   return { pct, have, missing };
 }
 
+/** Texto relativo a partir de `days_ago` (lo calcula el backend). */
 export function timeAgo(daysAgo) {
   if (daysAgo <= 0) return 'Hoy';
   if (daysAgo === 1) return 'Ayer';
@@ -21,10 +23,8 @@ export function placeLabel(offer) {
   return offer.location ? `${base} · ${offer.location}` : base;
 }
 
-/** Valor numérico inicial del rango salarial, para ordenar. */
-export function salaryFloor(salary) {
-  const first = /[\d,]+/.exec(salary || '');
-  return first ? Number(first[0].replace(/,/g, '')) : 0;
+export function salaryLabel(offer) {
+  return offer.salary_range ? `${offer.salary_range} al mes` : 'Salario no indicado';
 }
 
 export function initials(name = '') {

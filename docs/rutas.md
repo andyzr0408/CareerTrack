@@ -1,6 +1,6 @@
 # Rutas de CareerTrack por tipo de usuario
 
-Hay tres tipos de usuario (tabla `roles`): **profesional**, **empresa** y **administrador**, más el visitante sin sesión. Las rutas de la API van bajo el prefijo `/api`. Una cuenta con `status = inactive` (baja lógica) no puede iniciar sesión.
+Hay tres tipos de usuario (tabla `roles`): **profesional**, **empresa** y **administrador**, más el visitante sin sesión. Las rutas de la API van bajo el prefijo `/api`. Una cuenta con `status = inactive` (baja lógica) no puede iniciar sesión. Los parámetros y las respuestas de cada ruta están en [`api.md`](api.md); las listas se piden por páginas (`?page=` y `?per_page=`).
 
 ## 1. Visitante (sin sesión)
 

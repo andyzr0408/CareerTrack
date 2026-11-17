@@ -1,16 +1,24 @@
-# React + Vite
+# CareerTrack: frontend (React + Vite)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Pantallas de inicio de sesión, registro, panel del profesional, panel de la empresa y administración. Todo el contenido llega de la API de Laravel (`backend/`); no hay datos de ejemplo en el código.
 
-Currently, two official plugins are available:
+## Puesta en marcha
+1. Deja el backend corriendo: `php artisan serve` dentro de `backend/` (puerto 8000).
+2. En esta carpeta:
+```bash
+npm install
+cp .env.example .env     # VITE_API_URL=http://localhost:8000/api
+npm run dev              # http://localhost:5173
+```
+Si cambias el puerto o el dominio del frontend, ajusta `FRONTEND_URL` en `backend/.env` (CORS).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Cómo se conecta con la API
+- `src/lib/api.js`: cliente `fetch` con el token Bearer, errores de validación por campo y cierre de sesión si el token vence.
+- `src/hooks/usePaginated.js`: pide cada lista por páginas (`?page=2&per_page=6`), vuelve a la página 1 cuando cambian los filtros y retrocede si la página queda vacía.
+- `src/components/Pagination.jsx` y `PagedList.jsx`: controles de página y estados de carga, error y vacío.
+- Los filtros, la búsqueda y el orden se mandan al backend como parámetros; la búsqueda espera 350 ms después de la última tecla.
 
-## React Compiler
+Contrato completo de rutas y respuestas: `docs/api.md` en la raíz del repositorio.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Cuentas de prueba
+Todas con la clave `password`: `profesional@careertrack.test`, `empresa@careertrack.test`, `admin@careertrack.test`.

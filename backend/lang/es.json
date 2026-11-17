@@ -1,0 +1,5 @@
+{
+    "Unauthenticated.": "No has iniciado sesión o tu sesión expiró.",
+    "Too Many Attempts.": "Demasiados intentos. Espera un momento e inténtalo de nuevo.",
+    "Server Error": "Error del servidor."
+}

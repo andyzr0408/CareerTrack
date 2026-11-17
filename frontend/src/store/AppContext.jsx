@@ -1,129 +1,32 @@
-import { createContext, useCallback, useContext, useMemo, useReducer, useState } from 'react';
-import {
-  COMPANIES,
-  DEMO_ACCOUNTS,
-  SKILLS,
-  initialApplications,
-  initialFavorites,
-  initialOffers,
-  initialProfessionals,
-  initialUsers,
-} from '../data/mock';
+import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
+import { api, getToken, setToken, setUnauthorizedHandler } from '../lib/api';
 
-const SESSION_KEY = 'ct-session';
 const THEME_KEY = 'ct-theme';
 
-function readSession() {
-  try {
-    return JSON.parse(sessionStorage.getItem(SESSION_KEY)) || null;
-  } catch {
-    return null;
-  }
-}
-
-function writeSession(session) {
-  try {
-    if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-    else sessionStorage.removeItem(SESSION_KEY);
-  } catch {
-    // Sin almacenamiento disponible: la sesión vive solo en memoria.
-  }
-}
-
+// session = usuario autenticado tal como lo entrega la API (/me): { id, email, role, name, professional?, company? }
 const initialState = {
-  session: readSession(),
-  offers: initialOffers,
-  companies: COMPANIES,
-  professionals: initialProfessionals,
-  applications: initialApplications,
-  favorites: initialFavorites,
-  users: initialUsers,
-  skills: SKILLS,
+  session: null,
+  booting: Boolean(getToken()), // hay token guardado: falta confirmar con /me que sigue vigente
+  skills: [], // catálogo [{ id, name }]
   toast: null,
 };
 
-let nextId = 100;
-const newId = (prefix) => `${prefix}${nextId++}`;
+let nextToast = 1;
 
 function reducer(state, action) {
   switch (action.type) {
-    case 'login':
-      return { ...state, session: action.session };
-    case 'logout':
-      return { ...state, session: null };
-
-    case 'register': {
-      const { role, id, name, headline, email } = action;
-      const user = { id: newId('u'), email, role, status: 'active' };
-      if (role === 'professional') {
-        return {
-          ...state,
-          users: [...state.users, user],
-          professionals: [...state.professionals, { id, name, headline, skills: [], cv: null }],
-          session: action.session,
-        };
-      }
-      return { ...state, users: [...state.users, user], companies: { ...state.companies, [id]: name }, session: action.session };
-    }
-
+    case 'session/set':
+      return { ...state, session: action.session, booting: false };
+    case 'session/patch':
+      return state.session ? { ...state, session: { ...state.session, ...action.patch } } : state;
+    case 'session/clear':
+      return { ...state, session: null, booting: false };
+    case 'skills/set':
+      return { ...state, skills: action.skills };
     case 'toast':
-      return { ...state, toast: { id: newId('t'), ...action.toast } };
+      return { ...state, toast: { id: nextToast++, ...action.toast } };
     case 'toast/clear':
       return { ...state, toast: null };
-
-    case 'favorite/toggle':
-      return {
-        ...state,
-        favorites: state.favorites.includes(action.offerId)
-          ? state.favorites.filter((id) => id !== action.offerId)
-          : [...state.favorites, action.offerId],
-      };
-
-    case 'application/create':
-      return {
-        ...state,
-        applications: [
-          { id: newId('a'), professionalId: action.professionalId, offerId: action.offerId, status: 'pending', daysAgo: 0 },
-          ...state.applications,
-        ],
-      };
-    case 'application/status':
-      return {
-        ...state,
-        applications: state.applications.map((a) => (a.id === action.id ? { ...a, status: action.status } : a)),
-      };
-
-    case 'profile/update':
-      return {
-        ...state,
-        professionals: state.professionals.map((p) => (p.id === action.id ? { ...p, ...action.changes } : p)),
-      };
-
-    case 'offer/create':
-      return { ...state, offers: [{ ...action.offer, id: newId('o'), daysAgo: 0, moderation: 'pending' }, ...state.offers] };
-    case 'offer/status':
-      return { ...state, offers: state.offers.map((o) => (o.id === action.id ? { ...o, status: action.status } : o)) };
-    case 'offer/remove':
-      return {
-        ...state,
-        offers: state.offers.filter((o) => o.id !== action.id),
-        applications: state.applications.filter((a) => a.offerId !== action.id),
-        favorites: state.favorites.filter((id) => id !== action.id),
-      };
-    case 'offer/moderate':
-      return { ...state, offers: state.offers.map((o) => (o.id === action.id ? { ...o, moderation: action.moderation } : o)) };
-
-    case 'user/status':
-      return {
-        ...state,
-        users: state.users.map((u) => (u.id === action.id ? { ...u, status: action.status } : u)),
-      };
-
-    case 'skill/add':
-      return state.skills.includes(action.name) ? state : { ...state, skills: [...state.skills, action.name] };
-    case 'skill/remove':
-      return { ...state, skills: state.skills.filter((s) => s !== action.name) };
-
     default:
       return state;
   }
@@ -136,72 +39,62 @@ export function AppProvider({ children }) {
 
   const actions = useMemo(() => {
     const toast = (message, tone = 'ok') => dispatch({ type: 'toast', toast: { message, tone } });
+
+    const startSession = ({ token, user }) => {
+      setToken(token);
+      dispatch({ type: 'session/set', session: user });
+      return user;
+    };
+
     return {
       toast,
-      login(role, email) {
-        const account = DEMO_ACCOUNTS[role];
-        const session = { role, email: email || account.email, name: account.name, profileId: account.profileId, companyId: account.companyId };
-        writeSession(session);
-        dispatch({ type: 'login', session });
+      /** Lanza ApiError si las credenciales no sirven (422) o la cuenta está desactivada (403). */
+      async login({ email, password, role }) {
+        return startSession(await api.post('/login', { email, password, role }));
       },
-      register(role, { name, extra, email }) {
-        const id = newId(role === 'company' ? 'c' : 'p');
-        const session =
-          role === 'company'
-            ? { role, email, name, companyId: id }
-            : { role, email, name, profileId: id };
-        writeSession(session);
-        dispatch({ type: 'register', role, id, name, headline: extra, email, session });
+      /** `data` = { role, email, password, full_name | trade_name, headline | tax_id }. */
+      async register(data) {
+        return startSession(await api.post('/register', data));
       },
-      logout() {
-        writeSession(null);
-        dispatch({ type: 'logout' });
+      async logout() {
+        try {
+          await api.post('/logout');
+        } catch {
+          // Si el token ya no servía, igual se cierra la sesión en pantalla.
+        }
+        setToken(null);
+        dispatch({ type: 'session/clear' });
       },
-      toggleFavorite(offerId, saved) {
-        dispatch({ type: 'favorite/toggle', offerId });
-        toast(saved ? 'Quitada de favoritos' : 'Guardada en favoritos');
+      /** Actualiza el perfil profesional guardado en la sesión (skills, CV, nombre). */
+      setProfessional(professional) {
+        dispatch({ type: 'session/patch', patch: { professional } });
       },
-      apply(professionalId, offer) {
-        dispatch({ type: 'application/create', professionalId, offerId: offer.id });
-        toast(`Te postulaste a ${offer.title}`);
-      },
-      setApplicationStatus(id, status) {
-        dispatch({ type: 'application/status', id, status });
-      },
-      updateProfile(id, changes, message) {
-        dispatch({ type: 'profile/update', id, changes });
-        if (message) toast(message);
-      },
-      createOffer(offer) {
-        dispatch({ type: 'offer/create', offer });
-        toast('Vacante enviada a revisión. Se publicará cuando la apruebe un administrador.');
-      },
-      setOfferStatus(id, status) {
-        dispatch({ type: 'offer/status', id, status });
-        toast(status === 'paused' ? 'Vacante pausada' : 'Vacante reactivada');
-      },
-      removeOffer(id) {
-        dispatch({ type: 'offer/remove', id });
-        toast('Vacante eliminada');
-      },
-      moderateOffer(id, moderation) {
-        dispatch({ type: 'offer/moderate', id, moderation });
-        toast(moderation === 'approved' ? 'Oferta aprobada' : 'Oferta bloqueada', moderation === 'approved' ? 'ok' : 'bad');
-      },
-      setUserStatus(id, status) {
-        dispatch({ type: 'user/status', id, status });
-        toast(status === 'active' ? 'Cuenta activada' : 'Cuenta desactivada');
-      },
-      addSkill(name) {
-        dispatch({ type: 'skill/add', name });
-        toast('Skill agregada al catálogo');
-      },
-      removeSkill(name) {
-        dispatch({ type: 'skill/remove', name });
-        toast('Skill eliminada del catálogo');
+      async reloadSkills() {
+        const { data } = await api.get('/skills');
+        dispatch({ type: 'skills/set', skills: data });
       },
     };
   }, []);
+
+  // Al abrir la página: recupera la sesión si hay token y carga el catálogo de skills.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setToken(null);
+      dispatch({ type: 'session/clear' });
+      dispatch({ type: 'toast', toast: { message: 'Tu sesión expiró. Inicia sesión de nuevo.', tone: 'bad' } });
+    });
+
+    if (getToken()) {
+      api
+        .get('/me')
+        .then(({ data }) => dispatch({ type: 'session/set', session: data }))
+        .catch(() => {
+          setToken(null);
+          dispatch({ type: 'session/clear' });
+        });
+    }
+    actions.reloadSkills().catch(() => {});
+  }, [actions]);
 
   const value = useMemo(() => ({ state, actions, dispatch }), [state, actions]);
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

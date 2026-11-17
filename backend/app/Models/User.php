@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     public const STATUS_ACTIVE = 'active';
     public const STATUS_INACTIVE = 'inactive';
@@ -72,6 +73,14 @@ class User extends Authenticatable
     public function isCompany(): bool
     {
         return $this->hasRole(Role::COMPANY);
+    }
+
+    /** Nombre para mostrar: el del perfil, el de la empresa o "Administrador". */
+    public function displayName(): string
+    {
+        return $this->professionalProfile?->full_name
+            ?? $this->company?->trade_name
+            ?? 'Administrador';
     }
 
     public function isActive(): bool

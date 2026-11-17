@@ -1,16 +1,17 @@
 import { Button, Icon, Pill, APPLICATION_TONE, cx } from './ui';
 import { MatchMeter, SkillTags } from './Match';
-import { APPLICATION_STATUS } from '../data/mock';
-import { placeLabel, timeAgo } from '../lib/format';
+import { APPLICATION_STATUS } from '../data/constants';
+import { placeLabel, salaryLabel, timeAgo } from '../lib/format';
 
 /** Una oferta publicada, vista por un profesional. */
-export default function OfferCard({ offer, company, match, saved, application, onSave, onApply }) {
+export default function OfferCard({ offer, match, onSave, onApply }) {
+  const { saved, application } = offer;
   return (
     <article className="rounded-xl border border-line bg-surface p-5 transition-colors hover:border-brand/40">
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">
           <p className="text-sm text-muted">
-            <span className="font-semibold text-ink">{company}</span> · {timeAgo(offer.daysAgo)}
+            <span className="font-semibold text-ink">{offer.company?.trade_name}</span> · {timeAgo(offer.days_ago)}
           </p>
           <h3 className="mt-1 text-xl font-bold">{offer.title}</h3>
           <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
@@ -20,7 +21,7 @@ export default function OfferCard({ offer, company, match, saved, application, o
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Icon name="money" />
-              {offer.salary} al mes
+              {salaryLabel(offer)}
             </span>
           </p>
         </div>

@@ -28,6 +28,8 @@ class JobOfferFactory extends Factory
             'salary_range' => '$' . $min . ' - $' . ($min + fake()->numberBetween(2, 10) * 100),
             'status' => JobOffer::STATUS_ACTIVE,
             'moderation_status' => JobOffer::MODERATION_APPROVED,
+            // Fechas repartidas en el último mes: así el listado muestra "hace N días" variados
+            'created_at' => fake()->dateTimeBetween('-30 days', 'now'),
         ];
     }
 

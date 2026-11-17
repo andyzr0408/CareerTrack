@@ -23,12 +23,13 @@ function strength(password) {
 const STRENGTH_LABEL = ['Muy débil', 'Débil', 'Aceptable', 'Buena', 'Fuerte'];
 
 export default function Register() {
-  const { state, actions } = useApp();
+  const { actions } = useApp();
   const navigate = useNavigate();
   const [role, setRole] = useState('professional');
   const [form, setForm] = useState({ name: '', extra: '', email: '', password: '' });
   const [show, setShow] = useState(false);
   const [errors, setErrors] = useState({});
+  const [busy, setBusy] = useState(false);
 
   const set = (key) => (e) => {
     setForm((f) => ({ ...f, [key]: e.target.value }));
@@ -43,18 +44,39 @@ export default function Register() {
     if (!form.name.trim()) next.name = isCompany ? 'Escribe el nombre comercial.' : 'Escribe tu nombre completo.';
     if (isCompany && !form.extra.trim()) next.extra = 'Escribe la identificación fiscal (RIF o NIT).';
     if (!isEmail(form.email.trim())) next.email = 'El correo debe tener el formato nombre@dominio.com.';
-    else if (state.users.some((u) => u.email === form.email.trim().toLowerCase())) next.email = 'Ya existe una cuenta con ese correo. Inicia sesión.';
     if (form.password.length < 8) next.password = 'La contraseña tiene al menos 8 caracteres.';
     return next;
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length) return;
-    actions.register(role, { name: form.name.trim(), extra: form.extra.trim(), email: form.email.trim().toLowerCase() });
-    navigate(HOME[role]);
+
+    const base = { role, email: form.email.trim().toLowerCase(), password: form.password };
+    const payload = isCompany
+      ? { ...base, trade_name: form.name.trim(), tax_id: form.extra.trim() }
+      : { ...base, full_name: form.name.trim(), headline: form.extra.trim() || undefined };
+
+    setBusy(true);
+    try {
+      await actions.register(payload);
+      navigate(HOME[role]);
+    } catch (error) {
+      if (error.status === 422) {
+        // Los nombres de campo del servidor se asignan a los campos del formulario
+        setErrors({
+          name: error.first('full_name') || error.first('trade_name'),
+          extra: error.first('tax_id') || error.first('headline'),
+          email: error.first('email'),
+          password: error.first('password'),
+        });
+      } else {
+        actions.toast(error.message, 'bad');
+      }
+      setBusy(false);
+    }
   };
 
   const changeRole = (value) => {
@@ -112,8 +134,8 @@ export default function Register() {
           )}
         </div>
 
-        <Button type="submit" className="w-full py-3">
-          Crear cuenta
+        <Button type="submit" className="w-full py-3" disabled={busy}>
+          {busy ? 'Creando cuenta…' : 'Crear cuenta'}
         </Button>
       </form>
 
