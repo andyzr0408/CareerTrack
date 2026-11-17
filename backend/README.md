@@ -4,10 +4,15 @@
 ```bash
 cd backend
 composer install
+composer require laravel/sanctum   # solo la primera vez: instala la autenticación de la API
 cp .env.example .env
 php artisan key:generate
 php artisan migrate:fresh --seed
+php artisan storage:link           # para que se puedan abrir los currículums subidos
+php artisan serve                  # API en http://localhost:8000/api
 ```
+`composer require laravel/sanctum` modifica `composer.json` y `composer.lock`; hay que commitear ambos.
+No ejecutes `php artisan install:api`: la tabla `personal_access_tokens` ya tiene su migración en el proyecto.
 ## Cuentas de prueba (clave: `password`)
 | Correo | Tipo |
 |---|---|
@@ -23,8 +28,11 @@ Además se generan 5 empresas y 15 profesionales aleatorios con ofertas, postula
 php artisan test
 ```
 
+## API
+Autenticación con Laravel Sanctum (token Bearer). Cada ruta valida con un Form Request (`app/Http/Requests`), responde con un API Resource (`app/Http/Resources`) y las listas van paginadas (`?page=` y `?per_page=`). Las rutas están en `routes/api.php`.
+
 ## Documentación
-Modelo de datos y rutas por tipo de usuario: carpeta `docs/` en la raíz del repositorio.
+Contrato de la API (parámetros, respuestas, paginación): `docs/api.md`. Modelo de datos y rutas por tipo de usuario: `docs/modelo-datos.md` y `docs/rutas.md`, en la carpeta `docs/` de la raíz del repositorio.
 
 ## Modelo de datos
 `roles`, `users`, `professional_profiles`, `companies`, `job_offers`, `skills`,
