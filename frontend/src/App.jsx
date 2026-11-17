@@ -8,10 +8,19 @@ import BackofficeAdmin from './pages/BackofficeAdmin';
 
 const HOME = { professional: '/dashboard', company: '/empresa', admin: '/admin' };
 
+function Loading() {
+  return (
+    <p role="status" className="flex min-h-screen items-center justify-center text-sm text-muted">
+      Cargando…
+    </p>
+  );
+}
+
 /** Solo deja pasar al rol indicado; si no hay sesión, vuelve al inicio de sesión. */
 function RequireRole({ role, children }) {
   const { state } = useApp();
-  const { session } = state;
+  const { session, booting } = state;
+  if (booting) return <Loading />;
   if (!session) return <Navigate to="/" replace />;
   if (session.role !== role) return <Navigate to={HOME[session.role]} replace />;
   return children;
@@ -20,7 +29,8 @@ function RequireRole({ role, children }) {
 /** Quien ya inició sesión no necesita ver el acceso otra vez. */
 function GuestOnly({ children }) {
   const { state } = useApp();
-  const { session } = state;
+  const { session, booting } = state;
+  if (booting) return <Loading />;
   return session ? <Navigate to={HOME[session.role]} replace /> : children;
 }
 

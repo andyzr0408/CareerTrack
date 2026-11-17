@@ -1,24 +1,28 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import AppShell from '../components/AppShell';
 import OfferCard from '../components/OfferCard';
+import PagedList from '../components/PagedList';
 import { SkillTags } from '../components/Match';
 import { Button, EmptyState, Icon, Input, Modal, Pill, Segmented, Select, SkillPicker, APPLICATION_TONE, cx } from '../components/ui';
 import { useApp } from '../store/AppContext';
-import { APPLICATION_STATUS, MODALITY } from '../data/mock';
-import { matchOffer, placeLabel, salaryFloor, timeAgo } from '../lib/format';
+import { usePaginated, useDebounced } from '../hooks/usePaginated';
+import { api } from '../lib/api';
+import { APPLICATION_STATUS, MODALITY } from '../data/constants';
+import { matchOffer, placeLabel, timeAgo } from '../lib/format';
 
 const MODALITY_OPTIONS = [{ value: 'all', label: 'Todas' }, ...Object.entries(MODALITY).map(([value, label]) => ({ value, label }))];
 const SORTS = {
   match: 'Mayor compatibilidad',
   recent: 'Más recientes',
-  salary: 'Mayor salario',
 };
 const MAX_CV_BYTES = 5 * 1024 * 1024;
+const PER_PAGE = 6;
 
 export default function DashboardProfesional() {
   const { state, actions } = useApp();
-  const me = state.professionals.find((p) => p.id === state.session.profileId);
-  const mySkills = me.skills;
+  const me = state.session.professional;
+  const mySkills = me.skills || [];
+  const catalog = state.skills.map((s) => s.name);
 
   const [section, setSection] = useState('explore');
   const [query, setQuery] = useState('');
@@ -27,36 +31,22 @@ export default function DashboardProfesional() {
   const [skillFilter, setSkillFilter] = useState([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [applyTo, setApplyTo] = useState(null);
+  const [applying, setApplying] = useState(false);
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [cvOpen, setCvOpen] = useState(false);
 
-  const published = useMemo(() => state.offers.filter((o) => o.status === 'active' && o.moderation === 'approved'), [state.offers]);
-  const myApplications = useMemo(() => state.applications.filter((a) => a.professionalId === me.id), [state.applications, me.id]);
-  const applicationFor = (offerId) => myApplications.find((a) => a.offerId === offerId);
+  // Cada lista pide su página al backend; el texto se envía con retraso para no pedir en cada tecla.
+  const search = useDebounced(query);
+  const offersQ = usePaginated('/job-offers', {
+    search,
+    modality: modality === 'all' ? undefined : modality,
+    skills: skillFilter,
+    sort,
+    per_page: PER_PAGE,
+  });
+  const applicationsQ = usePaginated('/applications', { per_page: PER_PAGE });
+  const favoritesQ = usePaginated('/favorites', { per_page: PER_PAGE });
 
-  const filterOptions = useMemo(() => [...new Set(published.flatMap((o) => o.skills))].sort((a, b) => a.localeCompare(b)), [published]);
-
-  const results = useMemo(() => {
-    const text = query.trim().toLowerCase();
-    const list = published
-      .map((offer) => ({ offer, match: matchOffer(offer, mySkills) }))
-      .filter(({ offer }) => modality === 'all' || offer.modality === modality)
-      .filter(({ offer }) => skillFilter.every((s) => offer.skills.includes(s)))
-      .filter(({ offer }) => {
-        if (!text) return true;
-        const company = state.companies[offer.companyId] || '';
-        return [offer.title, company, offer.location, ...offer.skills].join(' ').toLowerCase().includes(text);
-      });
-    const by = {
-      match: (a, b) => b.match.pct - a.match.pct || a.offer.daysAgo - b.offer.daysAgo,
-      recent: (a, b) => a.offer.daysAgo - b.offer.daysAgo,
-      salary: (a, b) => salaryFloor(b.offer.salary) - salaryFloor(a.offer.salary),
-    };
-    return list.sort(by[sort]);
-  }, [published, mySkills, modality, skillFilter, query, sort, state.companies]);
-
-  const strongMatches = published.filter((o) => matchOffer(o, mySkills).pct >= 70).length;
-  const favorites = state.favorites.map((id) => state.offers.find((o) => o.id === id)).filter(Boolean);
   const hasFilters = query || modality !== 'all' || skillFilter.length;
   const clearFilters = () => {
     setQuery('');
@@ -66,19 +56,67 @@ export default function DashboardProfesional() {
 
   const nav = [
     { key: 'explore', label: 'Explorar' },
-    { key: 'applications', label: 'Mis postulaciones', count: myApplications.length },
-    { key: 'favorites', label: 'Favoritas', count: favorites.length },
+    { key: 'applications', label: 'Mis postulaciones', count: applicationsQ.meta?.total },
+    { key: 'favorites', label: 'Favoritas', count: favoritesQ.meta?.total },
   ];
 
-  const renderCard = ({ offer, match }) => (
+  const toggleSave = async (offer) => {
+    try {
+      if (offer.saved) await api.delete(`/job-offers/${offer.id}/favorite`);
+      else await api.post(`/job-offers/${offer.id}/favorite`);
+      offersQ.patch(offer.id, { saved: !offer.saved });
+      favoritesQ.patch(offer.id, { saved: !offer.saved });
+      favoritesQ.reload();
+      actions.toast(offer.saved ? 'Quitada de favoritos' : 'Guardada en favoritos');
+    } catch (error) {
+      actions.toast(error.message, 'bad');
+    }
+  };
+
+  const confirmApply = async () => {
+    setApplying(true);
+    try {
+      const { data } = await api.post(`/job-offers/${applyTo.id}/applications`);
+      const application = { id: data.id, status: data.status, applied_at: data.applied_at };
+      offersQ.patch(applyTo.id, { application });
+      favoritesQ.patch(applyTo.id, { application });
+      applicationsQ.reload();
+      actions.toast(`Te postulaste a ${applyTo.title}`);
+    } catch (error) {
+      if (error.status === 409) offersQ.reload();
+      actions.toast(error.message, error.status === 409 ? 'ok' : 'bad');
+    }
+    setApplying(false);
+    setApplyTo(null);
+  };
+
+  const saveSkills = async (skills) => {
+    try {
+      const { data } = await api.put('/profile/skills', { skills });
+      actions.setProfessional(data);
+      offersQ.reload();
+      actions.toast('Skills actualizadas. Las ofertas se reordenaron.');
+      setSkillsOpen(false);
+    } catch (error) {
+      actions.toast(error.message, 'bad');
+    }
+  };
+
+  const saveCv = async (file) => {
+    const body = new FormData();
+    body.append('cv', file);
+    const { data } = await api.post('/profile/cv', body);
+    actions.setProfessional(data);
+    actions.toast('Currículum actualizado');
+    setCvOpen(false);
+  };
+
+  const renderCard = (offer) => (
     <OfferCard
       key={offer.id}
       offer={offer}
-      match={match}
-      company={state.companies[offer.companyId]}
-      saved={state.favorites.includes(offer.id)}
-      application={applicationFor(offer.id)}
-      onSave={() => actions.toggleFavorite(offer.id, state.favorites.includes(offer.id))}
+      match={matchOffer(offer, mySkills)}
+      onSave={() => toggleSave(offer)}
       onApply={() => setApplyTo(offer)}
     />
   );
@@ -86,13 +124,11 @@ export default function DashboardProfesional() {
   return (
     <AppShell nav={nav} section={section} onSection={setSection}>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Hola, {me.name.split(' ')[0]}</h1>
+        <h1 className="text-3xl font-bold">Hola, {me.full_name.split(' ')[0]}</h1>
         <p className="mt-2 text-muted">
           {mySkills.length === 0
             ? 'Agrega tus skills para ver cuánto encajas con cada oferta.'
-            : strongMatches > 0
-              ? `${strongMatches} ${strongMatches === 1 ? 'oferta encaja' : 'ofertas encajan'} al 70% o más con tus skills.`
-              : 'Ninguna oferta encaja todavía al 70%. Suma skills para mejorar tus resultados.'}
+            : 'Ordena las ofertas por compatibilidad para ver primero las que mejor encajan con tus skills.'}
         </p>
       </div>
 
@@ -125,12 +161,12 @@ export default function DashboardProfesional() {
                     {skillFilter.length ? `Skills (${skillFilter.length})` : 'Filtrar por skills'}
                   </button>
                 </div>
-                {filtersOpen && <SkillPicker all={filterOptions} value={skillFilter} onChange={setSkillFilter} label="Skills que debe pedir la oferta" />}
+                {filtersOpen && <SkillPicker all={catalog} value={skillFilter} onChange={setSkillFilter} label="Skills que debe pedir la oferta" />}
               </div>
 
               <div className="flex items-center justify-between text-sm text-muted" aria-live="polite">
                 <span>
-                  {results.length} {results.length === 1 ? 'oferta' : 'ofertas'}
+                  {offersQ.meta ? `${offersQ.meta.total} ${offersQ.meta.total === 1 ? 'oferta' : 'ofertas'}` : ' '}
                 </span>
                 {hasFilters && (
                   <button type="button" onClick={clearFilters} className="font-semibold text-brand hover:underline">
@@ -139,42 +175,53 @@ export default function DashboardProfesional() {
                 )}
               </div>
 
-              {results.length ? (
-                results.map(renderCard)
-              ) : (
-                <EmptyState
-                  title="Ninguna oferta coincide"
-                  action={hasFilters && <Button variant="secondary" onClick={clearFilters}>Quitar filtros</Button>}
-                >
-                  Prueba con otra palabra o quita algún filtro.
-                </EmptyState>
-              )}
+              <PagedList
+                query={offersQ}
+                empty={
+                  <EmptyState
+                    title="Ninguna oferta coincide"
+                    action={hasFilters && <Button variant="secondary" onClick={clearFilters}>Quitar filtros</Button>}
+                  >
+                    Prueba con otra palabra o quita algún filtro.
+                  </EmptyState>
+                }
+              >
+                {renderCard}
+              </PagedList>
             </>
           )}
 
-          {section === 'applications' &&
-            (myApplications.length ? (
-              myApplications.map((a) => <ApplicationRow key={a.id} application={a} offer={state.offers.find((o) => o.id === a.offerId)} companies={state.companies} />)
-            ) : (
-              <EmptyState title="Aún no te has postulado" action={<Button onClick={() => setSection('explore')}>Explorar ofertas</Button>}>
-                Cuando te postules, aquí verás en qué etapa va cada proceso.
-              </EmptyState>
-            ))}
+          {section === 'applications' && (
+            <PagedList
+              query={applicationsQ}
+              empty={
+                <EmptyState title="Aún no te has postulado" action={<Button onClick={() => setSection('explore')}>Explorar ofertas</Button>}>
+                  Cuando te postules, aquí verás en qué etapa va cada proceso.
+                </EmptyState>
+              }
+            >
+              {(a) => <ApplicationRow key={a.id} application={a} />}
+            </PagedList>
+          )}
 
-          {section === 'favorites' &&
-            (favorites.length ? (
-              favorites.map((offer) => renderCard({ offer, match: matchOffer(offer, mySkills) }))
-            ) : (
-              <EmptyState title="No has guardado ofertas" action={<Button onClick={() => setSection('explore')}>Explorar ofertas</Button>}>
-                Usa Guardar en una oferta para volver a ella después.
-              </EmptyState>
-            ))}
+          {section === 'favorites' && (
+            <PagedList
+              query={favoritesQ}
+              empty={
+                <EmptyState title="No has guardado ofertas" action={<Button onClick={() => setSection('explore')}>Explorar ofertas</Button>}>
+                  Usa Guardar en una oferta para volver a ella después.
+                </EmptyState>
+              }
+            >
+              {renderCard}
+            </PagedList>
+          )}
         </div>
 
         <aside className="space-y-4">
           <section className="rounded-xl border border-line bg-surface p-5" aria-labelledby="mis-skills">
             <h2 id="mis-skills" className="text-lg font-bold">
-              {me.name}
+              {me.full_name}
             </h2>
             <p className="text-sm text-muted">{me.headline || 'Sin titular'}</p>
             <div className="mt-4">
@@ -204,9 +251,9 @@ export default function DashboardProfesional() {
                 <Icon name="file" className="mt-0.5 h-5 w-5 text-brand" />
                 <div className="min-w-0">
                   <p className="break-all text-sm font-semibold">{me.cv.name}</p>
-                  <p className="text-xs text-muted">
-                    Subido el {me.cv.date} · {me.cv.size}
-                  </p>
+                  <a href={me.cv.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand hover:underline">
+                    Ver archivo
+                  </a>
                 </div>
               </div>
             ) : (
@@ -221,27 +268,18 @@ export default function DashboardProfesional() {
 
       <ApplyDialog
         offer={applyTo}
-        company={applyTo && state.companies[applyTo.companyId]}
         match={applyTo && matchOffer(applyTo, mySkills)}
         hasCv={Boolean(me.cv)}
+        busy={applying}
         onClose={() => setApplyTo(null)}
-        onConfirm={() => {
-          actions.apply(me.id, applyTo);
-          setApplyTo(null);
-        }}
+        onConfirm={confirmApply}
         onUploadCv={() => {
           setApplyTo(null);
           setCvOpen(true);
         }}
       />
-      <SkillsDialog key={skillsOpen ? 'open' : 'closed'} open={skillsOpen} all={state.skills} value={mySkills} onClose={() => setSkillsOpen(false)} onSave={(skills) => {
-        actions.updateProfile(me.id, { skills }, 'Skills actualizadas. Las ofertas se reordenaron.');
-        setSkillsOpen(false);
-      }} />
-      <CvDialog key={cvOpen ? 'cv-open' : 'cv-closed'} open={cvOpen} onClose={() => setCvOpen(false)} onSave={(cv) => {
-        actions.updateProfile(me.id, { cv }, 'Currículum actualizado');
-        setCvOpen(false);
-      }} />
+      <SkillsDialog key={skillsOpen ? 'open' : 'closed'} open={skillsOpen} all={catalog} value={mySkills} onClose={() => setSkillsOpen(false)} onSave={saveSkills} />
+      <CvDialog key={cvOpen ? 'cv-open' : 'cv-closed'} open={cvOpen} onClose={() => setCvOpen(false)} onSave={saveCv} />
     </AppShell>
   );
 }
@@ -249,7 +287,8 @@ export default function DashboardProfesional() {
 const STEPS = ['Enviada', 'En revisión', 'Decisión'];
 const STEP_REACHED = { pending: 0, reviewed: 1, accepted: 2, rejected: 2 };
 
-function ApplicationRow({ application, offer, companies }) {
+function ApplicationRow({ application }) {
+  const offer = application.offer;
   if (!offer) return null;
   const reached = STEP_REACHED[application.status];
   const decisionTone = application.status === 'accepted' ? 'bg-ok' : application.status === 'rejected' ? 'bg-bad' : 'bg-brand';
@@ -258,7 +297,7 @@ function ApplicationRow({ application, offer, companies }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-muted">
-            <span className="font-semibold text-ink">{companies[offer.companyId]}</span> · Postulaste {timeAgo(application.daysAgo).toLowerCase()}
+            <span className="font-semibold text-ink">{offer.company?.trade_name}</span> · Postulaste {timeAgo(application.days_ago).toLowerCase()}
           </p>
           <h3 className="mt-1 text-lg font-bold">{offer.title}</h3>
           <p className="text-sm text-muted">{placeLabel(offer)}</p>
@@ -277,7 +316,7 @@ function ApplicationRow({ application, offer, companies }) {
   );
 }
 
-function ApplyDialog({ offer, company, match, hasCv, onClose, onConfirm, onUploadCv }) {
+function ApplyDialog({ offer, match, hasCv, busy, onClose, onConfirm, onUploadCv }) {
   return (
     <Modal
       open={Boolean(offer)}
@@ -288,7 +327,7 @@ function ApplyDialog({ offer, company, match, hasCv, onClose, onConfirm, onUploa
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          {hasCv ? <Button onClick={onConfirm}>Postularme</Button> : <Button onClick={onUploadCv}>Subir currículum</Button>}
+          {hasCv ? <Button onClick={onConfirm} disabled={busy}>{busy ? 'Enviando…' : 'Postularme'}</Button> : <Button onClick={onUploadCv}>Subir currículum</Button>}
         </>
       }
     >
@@ -297,7 +336,7 @@ function ApplyDialog({ offer, company, match, hasCv, onClose, onConfirm, onUploa
           <div>
             <p className="font-bold">{offer.title}</p>
             <p className="text-sm text-muted">
-              {company} · {placeLabel(offer)}
+              {offer.company?.trade_name} · {placeLabel(offer)}
             </p>
           </div>
           <SkillTags have={match.have} missing={match.missing} />
@@ -315,6 +354,12 @@ function ApplyDialog({ offer, company, match, hasCv, onClose, onConfirm, onUploa
 
 function SkillsDialog({ open, all, value, onClose, onSave }) {
   const [draft, setDraft] = useState(value);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    setBusy(true);
+    await onSave(draft);
+    setBusy(false);
+  };
   return (
     <Modal
       open={open}
@@ -326,7 +371,7 @@ function SkillsDialog({ open, all, value, onClose, onSave }) {
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={() => onSave(draft)}>Guardar skills</Button>
+          <Button onClick={save} disabled={busy}>{busy ? 'Guardando…' : 'Guardar skills'}</Button>
         </>
       }
     >
@@ -340,6 +385,7 @@ function CvDialog({ open, onClose, onSave }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState('');
   const [over, setOver] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const pick = (f) => {
     if (!f) return;
@@ -349,13 +395,15 @@ function CvDialog({ open, onClose, onSave }) {
     setFile(f);
   };
 
-  const save = () => {
+  const save = async () => {
     if (!file) return setError('Elige un archivo PDF para continuar.');
-    onSave({
-      name: file.name,
-      size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-      date: new Date().toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' }),
-    });
+    setBusy(true);
+    try {
+      await onSave(file);
+    } catch (e) {
+      setError(e.first?.('cv') || e.message);
+      setBusy(false);
+    }
   };
 
   return (
@@ -368,7 +416,7 @@ function CvDialog({ open, onClose, onSave }) {
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button onClick={save}>Guardar currículum</Button>
+          <Button onClick={save} disabled={busy}>{busy ? 'Subiendo…' : 'Guardar currículum'}</Button>
         </>
       }
     >

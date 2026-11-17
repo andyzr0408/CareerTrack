@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import AuthLayout from '../components/AuthLayout';
 import { Button, Field, Icon, Input, Segmented } from '../components/ui';
 import { useApp } from '../store/AppContext';
-import { DEMO_ACCOUNTS, ROLE_LABEL } from '../data/mock';
+import { DEMO_ACCOUNTS, ROLE_LABEL } from '../data/constants';
 import { isEmail } from '../lib/format';
 
 const HOME = { professional: '/dashboard', company: '/empresa', admin: '/admin' };
@@ -14,38 +14,45 @@ const ROLES = [
 ];
 
 export default function Login() {
-  const { state, actions } = useApp();
+  const { actions } = useApp();
   const navigate = useNavigate();
   const [role, setRole] = useState('professional');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [errors, setErrors] = useState({});
+  const [busy, setBusy] = useState(false);
 
   const validate = () => {
     const next = {};
-    const known = state.users.find((u) => u.email === email.trim().toLowerCase());
     if (!email.trim()) next.email = 'Escribe tu correo electrónico.';
     else if (!isEmail(email.trim())) next.email = 'El correo debe tener el formato nombre@dominio.com.';
-    else if (known && known.status === 'inactive') next.email = 'Esta cuenta está desactivada. Pide a un administrador que la active.';
-    else if (known && known.role !== role) next.email = `Ese correo es de una cuenta ${ROLE_LABEL[known.role].toLowerCase()}. Cambia el tipo de cuenta arriba.`;
     if (!password) next.password = 'Escribe tu contraseña.';
-    else if (password.length < 6) next.password = 'La contraseña tiene al menos 6 caracteres.';
     return next;
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length) return;
-    actions.login(role, email.trim().toLowerCase());
-    navigate(HOME[role]);
+
+    setBusy(true);
+    try {
+      const user = await actions.login({ email: email.trim().toLowerCase(), password, role });
+      navigate(HOME[user.role]);
+    } catch (error) {
+      // 422: credenciales o tipo de cuenta incorrectos; 403: cuenta desactivada
+      if (error.status === 422) setErrors({ email: error.first('email'), password: error.first('password') });
+      else if (error.status === 403) setErrors({ email: error.message });
+      else actions.toast(error.message, 'bad');
+      setBusy(false);
+    }
   };
 
   const useDemo = () => {
     setEmail(DEMO_ACCOUNTS[role].email);
-    setPassword('password');
+    setPassword(DEMO_ACCOUNTS[role].password);
     setErrors({});
   };
 
@@ -91,8 +98,8 @@ export default function Login() {
           )}
         </Field>
 
-        <Button type="submit" className="w-full py-3">
-          Iniciar sesión
+        <Button type="submit" className="w-full py-3" disabled={busy}>
+          {busy ? 'Entrando…' : 'Iniciar sesión'}
         </Button>
       </form>
 

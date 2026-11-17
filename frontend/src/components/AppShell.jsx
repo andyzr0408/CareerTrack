@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp, useTheme } from '../store/AppContext';
-import { ROLE_LABEL } from '../data/mock';
+import { ROLE_LABEL } from '../data/constants';
 import { Avatar, Button, Icon, Toast, cx } from './ui';
 
 export function Logo({ className }) {
@@ -35,8 +35,8 @@ export default function AppShell({ nav, section, onSection, children }) {
   const navigate = useNavigate();
   const { session } = state;
 
-  const leave = () => {
-    actions.logout();
+  const leave = async () => {
+    await actions.logout();
     navigate('/');
   };
 
