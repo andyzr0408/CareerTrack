@@ -33,6 +33,26 @@ class JobOffer extends Model
         'moderation_status',
     ];
 
+    /** Relaciones y datos que necesita un profesional para ver una oferta (guardada, postulada). */
+    public function scopeWithViewerState($query, int $professionalId)
+    {
+        return $query->with([
+            'company:id,trade_name',
+            'skills:id,name',
+            'applications' => fn ($q) => $q->where('professional_id', $professionalId),
+            'favorites' => fn ($q) => $q->where('professional_id', $professionalId),
+        ]);
+    }
+
+    /** Contadores de postulaciones para el panel de la empresa (usar con withCount o loadCount). */
+    public static function applicationCounts(): array
+    {
+        return [
+            'applications',
+            'applications as pending_applications_count' => fn ($q) => $q->where('status', Application::STATUS_PENDING),
+        ];
+    }
+
     /** Ofertas visibles para los profesionales: activas y aprobadas. */
     public function scopePublished($query)
     {
