@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Company;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\JobOfferController;
 use App\Http\Controllers\Api\ProfileController;
+use App\Http\Controllers\Api\ProfileStatsController;
 use App\Http\Controllers\Api\SkillController;
 use Illuminate\Support\Facades\Route;
 
@@ -38,6 +39,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/job-offers', [JobOfferController::class, 'index']);
         Route::get('/job-offers/{id}', [JobOfferController::class, 'show'])->whereNumber('id');
 
+        Route::get('/profile/stats', ProfileStatsController::class);
         Route::get('/profile', [ProfileController::class, 'show']);
         Route::put('/profile', [ProfileController::class, 'update']);
         Route::post('/profile/cv', [ProfileController::class, 'uploadCv']);
@@ -53,6 +55,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Empresa
     Route::prefix('company')->middleware('role:company')->group(function () {
+        Route::get('/stats', Company\StatsController::class);
         Route::get('/', [Company\CompanyController::class, 'show']);
         Route::put('/', [Company\CompanyController::class, 'update']);
 

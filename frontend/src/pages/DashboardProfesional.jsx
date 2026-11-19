@@ -2,12 +2,14 @@ import { useState } from 'react';
 import AppShell from '../components/AppShell';
 import OfferCard from '../components/OfferCard';
 import PagedList from '../components/PagedList';
+import PieStat, { slicesFrom } from '../components/PieStat';
 import { SkillTags } from '../components/Match';
-import { Button, EmptyState, Icon, Input, Modal, Pill, Segmented, Select, SkillPicker, APPLICATION_TONE, cx } from '../components/ui';
+import { Button, EmptyState, Icon, Input, Modal, Pill, Segmented, Select, SkillPicker, Stat, APPLICATION_TONE, cx } from '../components/ui';
 import { useApp } from '../store/AppContext';
 import { usePaginated, useDebounced } from '../hooks/usePaginated';
+import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
-import { APPLICATION_STATUS, MODALITY } from '../data/constants';
+import { APPLICATION_STATUS, MODALITY, MODALITY_TONE } from '../data/constants';
 import { matchOffer, placeLabel, timeAgo } from '../lib/format';
 
 const MODALITY_OPTIONS = [{ value: 'all', label: 'Todas' }, ...Object.entries(MODALITY).map(([value, label]) => ({ value, label }))];
@@ -46,6 +48,7 @@ export default function DashboardProfesional() {
   });
   const applicationsQ = usePaginated('/applications', { per_page: PER_PAGE });
   const favoritesQ = usePaginated('/favorites', { per_page: PER_PAGE });
+  const statsQ = useApi('/profile/stats'); // números de los gráficos de pastel
 
   const hasFilters = query || modality !== 'all' || skillFilter.length;
   const clearFilters = () => {
@@ -56,6 +59,7 @@ export default function DashboardProfesional() {
 
   const nav = [
     { key: 'explore', label: 'Explorar' },
+    { key: 'summary', label: 'Mi resumen' },
     { key: 'applications', label: 'Mis postulaciones', count: applicationsQ.meta?.total },
     { key: 'favorites', label: 'Favoritas', count: favoritesQ.meta?.total },
   ];
@@ -67,6 +71,7 @@ export default function DashboardProfesional() {
       offersQ.patch(offer.id, { saved: !offer.saved });
       favoritesQ.patch(offer.id, { saved: !offer.saved });
       favoritesQ.reload();
+      statsQ.reload();
       actions.toast(offer.saved ? 'Quitada de favoritos' : 'Guardada en favoritos');
     } catch (error) {
       actions.toast(error.message, 'bad');
@@ -81,6 +86,7 @@ export default function DashboardProfesional() {
       offersQ.patch(applyTo.id, { application });
       favoritesQ.patch(applyTo.id, { application });
       applicationsQ.reload();
+      statsQ.reload();
       actions.toast(`Te postulaste a ${applyTo.title}`);
     } catch (error) {
       if (error.status === 409) offersQ.reload();
@@ -191,6 +197,8 @@ export default function DashboardProfesional() {
             </>
           )}
 
+          {section === 'summary' && <Summary stats={statsQ.data} error={statsQ.error} />}
+
           {section === 'applications' && (
             <PagedList
               query={applicationsQ}
@@ -286,6 +294,24 @@ export default function DashboardProfesional() {
 
 const STEPS = ['Enviada', 'En revisión', 'Decisión'];
 const STEP_REACHED = { pending: 0, reviewed: 1, accepted: 2, rejected: 2 };
+
+/** Gráficos de pastel de la actividad del profesional. */
+function Summary({ stats, error }) {
+  if (error) return <EmptyState title="No se pudo cargar el resumen">{error}</EmptyState>;
+  if (!stats) return <p className="py-12 text-center text-sm text-muted" role="status">Cargando…</p>;
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Stat label="Postulaciones enviadas" value={stats.total_applications} tone="brand" />
+        <Stat label="Ofertas guardadas" value={stats.favorites} />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <PieStat title="Postulaciones por estado" slices={slicesFrom(stats.applications_by_status, APPLICATION_STATUS, APPLICATION_TONE)} />
+        <PieStat title="Postulaciones por modalidad" slices={slicesFrom(stats.applications_by_modality, MODALITY, MODALITY_TONE)} />
+      </div>
+    </div>
+  );
+}
 
 function ApplicationRow({ application }) {
   const offer = application.offer;

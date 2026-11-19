@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import AppShell from '../components/AppShell';
 import PagedList from '../components/PagedList';
+import PieStat, { slicesFrom } from '../components/PieStat';
 import { MatchMeter, SkillTags } from '../components/Match';
 import {
   Avatar, Button, EmptyState, Field, Icon, Input, Modal, Pill, Segmented, Select, SkillPicker, Stat,
@@ -8,8 +9,9 @@ import {
 } from '../components/ui';
 import { useApp } from '../store/AppContext';
 import { usePaginated } from '../hooks/usePaginated';
+import { useApi } from '../hooks/useApi';
 import { api } from '../lib/api';
-import { APPLICATION_STATUS, MODALITY, MODERATION, OFFER_STATUS } from '../data/constants';
+import { APPLICATION_STATUS, MODALITY, MODERATION, OFFER_STATE, OFFER_STATE_TONE, OFFER_STATUS } from '../data/constants';
 import { matchOffer, placeLabel, salaryLabel, timeAgo } from '../lib/format';
 
 const MODALITY_OPTIONS = Object.entries(MODALITY).map(([value, label]) => ({ value, label }));
@@ -32,6 +34,14 @@ export default function DashboardCompania() {
   }, [actions]);
   useEffect(loadCompany, [loadCompany]);
 
+  // Gráficos de pastel; se piden otra vez junto con los totales cuando algo cambia
+  const statsQ = useApi('/company/stats');
+  const reloadStats = statsQ.reload;
+  const refreshNumbers = useCallback(() => {
+    loadCompany();
+    reloadStats();
+  }, [loadCompany, reloadStats]);
+
   const stats = company?.stats;
   const nav = [{ key: 'offers', label: 'Mis vacantes', count: stats?.total_offers }];
 
@@ -39,7 +49,7 @@ export default function DashboardCompania() {
     await api.post('/company/job-offers', form); // si el servidor rechaza, el diálogo muestra los errores
     offersQ.setPage(1);
     offersQ.reload();
-    loadCompany();
+    refreshNumbers();
     setPublishOpen(false);
     actions.toast('Vacante enviada a revisión. Se publicará cuando la apruebe un administrador.');
   };
@@ -48,7 +58,7 @@ export default function DashboardCompania() {
     try {
       const { data } = await api.patch(`/company/job-offers/${offer.id}/status`, { status });
       offersQ.patch(offer.id, data);
-      loadCompany();
+      refreshNumbers();
       actions.toast(status === 'paused' ? 'Vacante pausada' : 'Vacante reactivada');
     } catch (error) {
       actions.toast(error.message, 'bad');
@@ -59,7 +69,7 @@ export default function DashboardCompania() {
     try {
       await api.delete(`/company/job-offers/${toRemove.id}`);
       offersQ.reload();
-      loadCompany();
+      refreshNumbers();
       actions.toast('Vacante eliminada');
     } catch (error) {
       actions.toast(error.message, 'bad');
@@ -143,6 +153,19 @@ export default function DashboardCompania() {
         <Stat label="Candidatos aceptados" value={stats?.accepted ?? '–'} tone="ok" />
       </div>
 
+      <div className="mb-8 grid gap-4 lg:grid-cols-2">
+        {statsQ.data ? (
+          <>
+            <PieStat title="Postulaciones por estado" slices={slicesFrom(statsQ.data.applications_by_status, APPLICATION_STATUS, APPLICATION_TONE)} />
+            <PieStat title="Vacantes por estado" slices={slicesFrom(statsQ.data.offers_by_state, OFFER_STATE, OFFER_STATE_TONE)} />
+          </>
+        ) : (
+          <p className="text-sm text-muted lg:col-span-2" role="status">
+            {statsQ.error || 'Cargando gráficos…'}
+          </p>
+        )}
+      </div>
+
       <PagedList
         query={offersQ}
         as="ul"
@@ -170,7 +193,7 @@ export default function DashboardCompania() {
         onClose={() => setCandidatesOf(null)}
         onChanged={() => {
           offersQ.reload();
-          loadCompany();
+          refreshNumbers();
         }}
       />
 

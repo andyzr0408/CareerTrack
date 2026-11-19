@@ -25,4 +25,15 @@ abstract class Controller
     {
         return '%'.$term.'%';
     }
+
+    /**
+     * Cuenta por clave con todas las claves presentes (las que no aparecen valen 0).
+     *
+     * @param  array<int, string>  $keys
+     * @return array<string, int>
+     */
+    protected function withZeros(array $keys, $counts): array
+    {
+        return collect($keys)->mapWithKeys(fn (string $key) => [$key => (int) ($counts[$key] ?? 0)])->all();
+    }
 }

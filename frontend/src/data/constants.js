@@ -17,3 +17,8 @@ export const DEMO_ACCOUNTS = {
   company: { email: 'empresa@careertrack.test', password: 'password' },
   admin: { email: 'admin@careertrack.test', password: 'password' },
 };
+
+// Colores de los gráficos de pastel (nombres de tono de PieStat)
+export const MODALITY_TONE = { remote: 'brand', onsite: 'warn', hybrid: 'ok' };
+export const OFFER_STATE = { live: 'Visibles', paused: 'En pausa', pending: 'Por revisar', blocked: 'Bloqueadas' };
+export const OFFER_STATE_TONE = { live: 'ok', paused: 'neutral', pending: 'warn', blocked: 'bad' };
