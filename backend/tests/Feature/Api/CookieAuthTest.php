@@ -51,16 +51,14 @@ class CookieAuthTest extends ApiTestCase
         $user = $this->makeProfessional()->user;
         $token = $user->createToken('test')->plainTextToken;
 
-        $this->withUnencryptedCookie(AuthCookie::NAME, $token)
-            ->getJson('/api/me')
+        $this->withCookieToken('GET', '/api/me', $token)
             ->assertOk()
             ->assertJsonPath('data.id', $user->id);
     }
 
     public function test_an_invalid_cookie_is_rejected(): void
     {
-        $this->withUnencryptedCookie(AuthCookie::NAME, '999|token-que-no-existe')
-            ->getJson('/api/me')
+        $this->withCookieToken('GET', '/api/me', '999|token-que-no-existe')
             ->assertUnauthorized();
     }
 
@@ -78,13 +76,18 @@ class CookieAuthTest extends ApiTestCase
         $user = $this->makeProfessional()->user;
         $token = $user->createToken('test')->plainTextToken;
 
-        $response = $this->withUnencryptedCookie(AuthCookie::NAME, $token)
-            ->postJson('/api/logout')
+        $response = $this->withCookieToken('POST', '/api/logout', $token)
             ->assertOk();
 
         $cookie = $response->getCookie(AuthCookie::NAME, false);
         $this->assertNotNull($cookie);
         $this->assertTrue($cookie->isCleared());
         $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    /** Petición JSON que lleva el token solo en la cookie, como hace el navegador. */
+    private function withCookieToken(string $method, string $uri, string $token)
+    {
+        return $this->call($method, $uri, [], [AuthCookie::NAME => $token], [], ['HTTP_ACCEPT' => 'application/json']);
     }
 }
