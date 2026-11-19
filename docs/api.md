@@ -6,7 +6,7 @@ Contrato entre el backend (Laravel, `backend/routes/api.php`) y el frontend (Rea
 
 - **Base:** `http://localhost:8000/api` (en el frontend, variable `VITE_API_URL`).
 - **Cabeceras:** `Accept: application/json`. Con sesión, `Authorization: Bearer <token>` (Postman) o la cookie `ct_token` (navegador).
-- **Autenticación:** Laravel Sanctum con tokens de API. `login` y `register` devuelven el token en el JSON y además lo guardan en la cookie `ct_token` (httpOnly, SameSite=Lax, 7 días). El frontend solo usa la cookie: `fetch(..., { credentials: 'include' })`; el middleware `AuthenticateFromCookie` la convierte en `Authorization: Bearer`. Frontend y API deben usar el mismo host (`localhost` con `localhost`, no `127.0.0.1`). `logout` borra la cookie.
+- **Autenticación:** Laravel Sanctum con tokens de API. `login` y `register` devuelven el token en el JSON y además lo guardan en la cookie `ct_token` (httpOnly, SameSite=Lax, 7 días). El frontend solo usa la cookie: `fetch(..., { credentials: 'include' })`; Sanctum la lee con `getAccessTokenFromRequestUsing` (`AppServiceProvider`) cuando no hay cabecera `Authorization`. Frontend y API deben usar el mismo host (`localhost` con `localhost`, no `127.0.0.1`). `logout` borra la cookie.
 - **Respuestas de un recurso:** `{ "data": { ... } }`.
 - **Listas paginadas:** `{ "data": [...], "links": {...}, "meta": { "current_page", "last_page", "per_page", "total", "from", "to" } }`. Se piden con `?page=2&per_page=6`.
 - **Errores:**
