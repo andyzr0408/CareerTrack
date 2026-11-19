@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp, useTheme } from '../store/AppContext';
 import { ROLE_LABEL } from '../data/constants';
 import { Avatar, Button, Icon, Toast, cx } from './ui';
+import { ROUTES } from '../routes';
 
 export function Logo({ className }) {
   return (
@@ -37,7 +38,7 @@ export default function AppShell({ nav, section, onSection, children }) {
 
   const leave = async () => {
     await actions.logout();
-    navigate('/');
+    navigate(ROUTES.login);
   };
 
   return (

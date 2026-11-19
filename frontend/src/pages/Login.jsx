@@ -5,8 +5,8 @@ import { Button, Field, Icon, Input, Segmented } from '../components/ui';
 import { useApp } from '../store/AppContext';
 import { DEMO_ACCOUNTS, ROLE_LABEL } from '../data/constants';
 import { isEmail } from '../lib/format';
+import { HOME_BY_ROLE, ROUTES } from '../routes';
 
-const HOME = { professional: '/dashboard', company: '/empresa', admin: '/admin' };
 const ROLES = [
   { value: 'professional', label: 'Profesional' },
   { value: 'company', label: 'Empresa' },
@@ -40,7 +40,7 @@ export default function Login() {
     setBusy(true);
     try {
       const user = await actions.login({ email: email.trim().toLowerCase(), password, role });
-      navigate(HOME[user.role]);
+      navigate(HOME_BY_ROLE[user.role]);
     } catch (error) {
       // 422: credenciales o tipo de cuenta incorrectos; 403: cuenta desactivada
       if (error.status === 422) setErrors({ email: error.first('email'), password: error.first('password') });
@@ -109,7 +109,7 @@ export default function Login() {
 
       <p className="mt-8 text-sm text-muted">
         ¿Aún no tienes cuenta?{' '}
-        <Link to="/registro" className="font-semibold text-brand hover:underline">
+        <Link to={ROUTES.register} className="font-semibold text-brand hover:underline">
           Crea una gratis
         </Link>
       </p>

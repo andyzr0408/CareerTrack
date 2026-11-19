@@ -5,8 +5,7 @@ import Register from './pages/Register';
 import DashboardProfesional from './pages/DashboardProfesional';
 import DashboardCompania from './pages/DashboardCompania';
 import BackofficeAdmin from './pages/BackofficeAdmin';
-
-const HOME = { professional: '/dashboard', company: '/empresa', admin: '/admin' };
+import { HOME_BY_ROLE, ROUTES } from './routes';
 
 function Loading() {
   return (
@@ -21,8 +20,8 @@ function RequireRole({ role, children }) {
   const { state } = useApp();
   const { session, booting } = state;
   if (booting) return <Loading />;
-  if (!session) return <Navigate to="/" replace />;
-  if (session.role !== role) return <Navigate to={HOME[session.role]} replace />;
+  if (!session) return <Navigate to={ROUTES.login} replace />;
+  if (session.role !== role) return <Navigate to={HOME_BY_ROLE[session.role]} replace />;
   return children;
 }
 
@@ -31,7 +30,7 @@ function GuestOnly({ children }) {
   const { state } = useApp();
   const { session, booting } = state;
   if (booting) return <Loading />;
-  return session ? <Navigate to={HOME[session.role]} replace /> : children;
+  return session ? <Navigate to={HOME_BY_ROLE[session.role]} replace /> : children;
 }
 
 export default function App() {
@@ -39,12 +38,12 @@ export default function App() {
     <AppProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<GuestOnly><Login /></GuestOnly>} />
-          <Route path="/registro" element={<GuestOnly><Register /></GuestOnly>} />
-          <Route path="/dashboard" element={<RequireRole role="professional"><DashboardProfesional /></RequireRole>} />
-          <Route path="/empresa" element={<RequireRole role="company"><DashboardCompania /></RequireRole>} />
-          <Route path="/admin" element={<RequireRole role="admin"><BackofficeAdmin /></RequireRole>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path={ROUTES.login} element={<GuestOnly><Login /></GuestOnly>} />
+          <Route path={ROUTES.register} element={<GuestOnly><Register /></GuestOnly>} />
+          <Route path={ROUTES.professional} element={<RequireRole role="professional"><DashboardProfesional /></RequireRole>} />
+          <Route path={ROUTES.company} element={<RequireRole role="company"><DashboardCompania /></RequireRole>} />
+          <Route path={ROUTES.admin} element={<RequireRole role="admin"><BackofficeAdmin /></RequireRole>} />
+          <Route path="*" element={<Navigate to={ROUTES.login} replace />} />
         </Routes>
       </BrowserRouter>
     </AppProvider>

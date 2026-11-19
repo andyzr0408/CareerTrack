@@ -4,12 +4,12 @@ import AuthLayout from '../components/AuthLayout';
 import { Button, Field, Icon, Input, Segmented, cx } from '../components/ui';
 import { useApp } from '../store/AppContext';
 import { isEmail } from '../lib/format';
+import { HOME_BY_ROLE, ROUTES } from '../routes';
 
 const ROLES = [
   { value: 'professional', label: 'Soy profesional' },
   { value: 'company', label: 'Soy empresa' },
 ];
-const HOME = { professional: '/dashboard', company: '/empresa' };
 
 /** 0 a 4 según largo y variedad de caracteres. */
 function strength(password) {
@@ -62,7 +62,7 @@ export default function Register() {
     setBusy(true);
     try {
       await actions.register(payload);
-      navigate(HOME[role]);
+      navigate(HOME_BY_ROLE[role]);
     } catch (error) {
       if (error.status === 422) {
         // Los nombres de campo del servidor se asignan a los campos del formulario
@@ -141,7 +141,7 @@ export default function Register() {
 
       <p className="mt-8 text-sm text-muted">
         ¿Ya tienes cuenta?{' '}
-        <Link to="/" className="font-semibold text-brand hover:underline">
+        <Link to={ROUTES.login} className="font-semibold text-brand hover:underline">
           Inicia sesión
         </Link>
       </p>
