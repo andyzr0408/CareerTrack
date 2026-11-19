@@ -5,8 +5,8 @@ Contrato entre el backend (Laravel, `backend/routes/api.php`) y el frontend (Rea
 ## Convenciones
 
 - **Base:** `http://localhost:8000/api` (en el frontend, variable `VITE_API_URL`).
-- **Cabeceras:** `Accept: application/json`. Con sesión, además `Authorization: Bearer <token>`.
-- **Autenticación:** Laravel Sanctum con tokens de API. El token llega en `login` y `register`.
+- **Cabeceras:** `Accept: application/json`. Con sesión, `Authorization: Bearer <token>` (Postman) o la cookie `ct_token` (navegador).
+- **Autenticación:** Laravel Sanctum con tokens de API. `login` y `register` devuelven el token en el JSON y además lo guardan en la cookie `ct_token` (httpOnly, SameSite=Lax, 7 días). El frontend solo usa la cookie: `fetch(..., { credentials: 'include' })`; el middleware `AuthenticateFromCookie` la convierte en `Authorization: Bearer`. Frontend y API deben usar el mismo host (`localhost` con `localhost`, no `127.0.0.1`). `logout` borra la cookie.
 - **Respuestas de un recurso:** `{ "data": { ... } }`.
 - **Listas paginadas:** `{ "data": [...], "links": {...}, "meta": { "current_page", "last_page", "per_page", "total", "from", "to" } }`. Se piden con `?page=2&per_page=6`.
 - **Errores:**
@@ -54,6 +54,7 @@ Equivalencias con el frontend anterior: `salary` = `salary_range`, `daysAgo` = `
 |---|---|---|---|
 | GET | `/job-offers` | `page`, `per_page` (1-50, def. 6), `search`, `modality`, `skills[]` (nombres; la oferta debe pedirlas todas), `sort` (`recent` def. \| `match`) | Lista paginada de JobOffer publicadas (activas y aprobadas) con `company`, `skills`, `saved` y `application`. `match` ordena por skills en común con el profesional. |
 | GET | `/job-offers/{id}` | | `{ data: JobOffer }`. `404` si no está publicada. |
+| GET | `/profile/stats` | | `{ data: { total_applications, favorites, applications_by_status: { pending, reviewed, accepted, rejected }, applications_by_modality: { remote, onsite, hybrid } } }` (todas las claves siempre presentes, con 0). Alimenta los gráficos de pastel. |
 | GET | `/profile` | | `{ data: Professional }` con contadores |
 | PUT | `/profile` | `full_name`, `headline?` | `{ data: Professional }` |
 | POST | `/profile/cv` | multipart, campo `cv` (PDF, máx. 5 MB) | `{ data: Professional }` |
@@ -68,6 +69,7 @@ Equivalencias con el frontend anterior: `salary` = `salary_range`, `daysAgo` = `
 
 | Método | Ruta | Cuerpo / parámetros | Respuesta |
 |---|---|---|---|
+| GET | `/company/stats` | | `{ data: { total_applications, applications_by_status, offers_by_state: { live, paused, pending, blocked } } }` (claves siempre presentes, con 0; los estados de oferta son excluyentes). Alimenta los gráficos de pastel. |
 | GET | `/company` | | `{ data: Company }` con `stats` |
 | PUT | `/company` | `trade_name`, `tax_id` | `{ data: Company }` |
 | GET | `/company/job-offers` | `page`, `per_page` (def. 6) | Lista paginada de sus JobOffer en cualquier estado, con `skills`, `applications_count` y `pending_applications_count` |

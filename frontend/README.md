@@ -13,7 +13,11 @@ npm run dev              # http://localhost:5173
 Si cambias el puerto o el dominio del frontend, ajusta `FRONTEND_URL` en `backend/.env` (CORS).
 
 ## Cómo se conecta con la API
-- `src/lib/api.js`: cliente `fetch` con el token Bearer, errores de validación por campo y cierre de sesión si el token vence.
+- `src/lib/api.js`: cliente `fetch` con `credentials: 'include'` (el token va en una cookie httpOnly), errores de validación por campo y cierre de sesión si la sesión vence.
+- `src/routes.js`: constante `ROUTES` con todas las rutas de React Router.
+- `src/components/PieStat.jsx`: gráfico de pastel con Recharts (`npm install recharts`).
+
+Abre la app en `http://localhost:5173` con la API en `http://localhost:8000` (mismo host `localhost`, no `127.0.0.1`) para que la cookie viaje. Sobre el estado global, ver [`docs/estado-global.md`](../docs/estado-global.md).
 - `src/hooks/usePaginated.js`: pide cada lista por páginas (`?page=2&per_page=6`), vuelve a la página 1 cuando cambian los filtros y retrocede si la página queda vacía.
 - `src/components/Pagination.jsx` y `PagedList.jsx`: controles de página y estados de carga, error y vacío.
 - Los filtros, la búsqueda y el orden se mandan al backend como parámetros; la búsqueda espera 350 ms después de la última tecla.

@@ -9,14 +9,14 @@ Hay tres tipos de usuario (tabla `roles`): **profesional**, **empresa** y **admi
 | GET | `/` (pantalla) | Pantalla de inicio de sesión. |
 | GET | `/registro` (pantalla) | Registro dinámico: el formulario cambia según elijas profesional o empresa. |
 | POST | `/api/register` | Crea el usuario con su rol y su perfil (profesional o empresa) en una sola operación. El administrador no se registra aquí; lo crea el seeder. |
-| POST | `/api/login` | Inicia sesión y devuelve el token. Rechaza las cuentas inactivas. |
+| POST | `/api/login` | Inicia sesión, devuelve el token y lo guarda en la cookie `ct_token`. Rechaza las cuentas inactivas. |
 | GET | `/api/skills` | Lista de skills para los formularios de registro y de ofertas. |
 
 ## 2. Todos los usuarios con sesión
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| POST | `/api/logout` | Cierra la sesión y revoca el token. |
+| POST | `/api/logout` | Cierra la sesión, revoca el token y borra la cookie. |
 | GET | `/api/me` | Datos del usuario autenticado, su rol y su perfil. |
 | PATCH | `/api/me/deactivate` | Baja lógica de la propia cuenta (`status = inactive`). No borra el historial. |
 

@@ -29,7 +29,7 @@ php artisan test
 ```
 
 ## API
-Autenticación con Laravel Sanctum (token Bearer). Cada ruta valida con un Form Request (`app/Http/Requests`), responde con un API Resource (`app/Http/Resources`) y las listas van paginadas (`?page=` y `?per_page=`). Las rutas están en `routes/api.php`.
+Autenticación con Laravel Sanctum. El token viaja en la cookie httpOnly `ct_token` (el middleware `AuthenticateFromCookie` la convierte en Bearer); Postman puede seguir usando `Authorization: Bearer`. Para depurar, ver [`docs/xdebug.md`](../docs/xdebug.md). Cada ruta valida con un Form Request (`app/Http/Requests`), responde con un API Resource (`app/Http/Resources`) y las listas van paginadas (`?page=` y `?per_page=`). Las rutas están en `routes/api.php`.
 
 ## Documentación
 Contrato de la API (parámetros, respuestas, paginación): `docs/api.md`. Modelo de datos y rutas por tipo de usuario: `docs/modelo-datos.md` y `docs/rutas.md`, en la carpeta `docs/` de la raíz del repositorio.
