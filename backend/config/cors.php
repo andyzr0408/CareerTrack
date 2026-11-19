@@ -22,6 +22,7 @@ return [
 
     'max_age' => 0,
 
-    // La API usa tokens Bearer, no cookies.
-    'supports_credentials' => false,
+    // El navegador envía la cookie con el token (fetch con credentials: 'include').
+    // Con esto activo los orígenes tienen que ser explícitos, nunca '*'.
+    'supports_credentials' => true,
 ];

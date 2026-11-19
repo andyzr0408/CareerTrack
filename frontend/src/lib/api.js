@@ -2,24 +2,10 @@
 // Contrato de rutas y respuestas: docs/api.md
 
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000/api').replace(/\/$/, '');
-const TOKEN_KEY = 'ct-token';
 
-export function getToken() {
-  try {
-    return sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setToken(token) {
-  try {
-    if (token) sessionStorage.setItem(TOKEN_KEY, token);
-    else sessionStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // Sin almacenamiento disponible: la sesión se pierde al recargar.
-  }
-}
+// El token no se maneja desde JavaScript: el backend lo entrega en una cookie httpOnly y el
+// navegador la manda sola en cada petición (credentials: 'include'). Así un XSS no puede robarlo.
+// El frontend y la API deben usar el mismo host (localhost con localhost) para que la cookie viaje.
 
 /** Error de la API: `errors` trae los mensajes por campo cuando la respuesta es 422. */
 export class ApiError extends Error {
@@ -38,7 +24,7 @@ export class ApiError extends Error {
 
 let onUnauthorized = () => {};
 
-/** Lo llama la API cuando el token ya no sirve (401), para cerrar la sesión en pantalla. */
+/** Lo llama la API cuando la sesión ya no sirve (401), para cerrar la sesión en pantalla. */
 export function setUnauthorizedHandler(handler) {
   onUnauthorized = handler;
 }
@@ -55,12 +41,10 @@ function buildUrl(path, params = {}) {
   return `${BASE}${path}${qs ? `?${qs}` : ''}`;
 }
 
-async function request(method, path, { params, body, signal } = {}) {
-  const token = getToken();
+async function request(method, path, { params, body, signal, silent401 = false } = {}) {
   const headers = { Accept: 'application/json' };
-  if (token) headers.Authorization = `Bearer ${token}`;
 
-  const options = { method, headers, signal };
+  const options = { method, headers, signal, credentials: 'include' };
   if (body instanceof FormData) {
     options.body = body; // el navegador pone el Content-Type con su boundary
   } else if (body !== undefined) {
@@ -80,7 +64,8 @@ async function request(method, path, { params, body, signal } = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    if (response.status === 401 && token) onUnauthorized();
+    // `silent401`: comprobaciones que esperan un 401 sin avisar (abrir la página sin sesión, cerrar sesión)
+    if (response.status === 401 && !silent401) onUnauthorized();
     throw new ApiError(response.status, data?.message || 'Ocurrió un error inesperado.', data?.errors || {});
   }
   return data;

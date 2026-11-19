@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AuthenticateFromCookie;
 use App\Http\Middleware\EnsureAccountIsActive;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // El token viaja en una cookie httpOnly: se pasa a Authorization antes de auth:sanctum
+        $middleware->api(prepend: [AuthenticateFromCookie::class]);
+
         $middleware->alias([
             'role' => EnsureRole::class,
             'active' => EnsureAccountIsActive::class,

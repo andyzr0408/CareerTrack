@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState } from 'react';
-import { api, getToken, setToken, setUnauthorizedHandler } from '../lib/api';
+import { api, setUnauthorizedHandler } from '../lib/api';
 
 const THEME_KEY = 'ct-theme';
 
 // session = usuario autenticado tal como lo entrega la API (/me): { id, email, role, name, professional?, company? }
 const initialState = {
   session: null,
-  booting: Boolean(getToken()), // hay token guardado: falta confirmar con /me que sigue vigente
+  booting: true, // al abrir la página se pregunta a /me si hay una sesión (cookie) vigente
   skills: [], // catálogo [{ id, name }]
   toast: null,
 };
@@ -21,6 +21,11 @@ function reducer(state, action) {
       return state.session ? { ...state, session: { ...state.session, ...action.patch } } : state;
     case 'session/clear':
       return { ...state, session: null, booting: false };
+    case 'session/expired':
+      // Solo avisa si había una sesión abierta; sin sesión no hay nada que expirar
+      return state.session
+        ? { ...state, session: null, toast: { id: nextToast++, message: 'Tu sesión expiró. Inicia sesión de nuevo.', tone: 'bad' } }
+        : state;
     case 'skills/set':
       return { ...state, skills: action.skills };
     case 'toast':
@@ -40,8 +45,8 @@ export function AppProvider({ children }) {
   const actions = useMemo(() => {
     const toast = (message, tone = 'ok') => dispatch({ type: 'toast', toast: { message, tone } });
 
-    const startSession = ({ token, user }) => {
-      setToken(token);
+    // El token llega en una cookie httpOnly; del JSON solo se usa el usuario.
+    const startSession = ({ user }) => {
       dispatch({ type: 'session/set', session: user });
       return user;
     };
@@ -58,11 +63,10 @@ export function AppProvider({ children }) {
       },
       async logout() {
         try {
-          await api.post('/logout');
+          await api.post('/logout', undefined, { silent401: true }); // el servidor borra la cookie
         } catch {
-          // Si el token ya no servía, igual se cierra la sesión en pantalla.
+          // Si la sesión ya no servía, igual se cierra en pantalla.
         }
-        setToken(null);
         dispatch({ type: 'session/clear' });
       },
       /** Actualiza el perfil profesional guardado en la sesión (skills, CV, nombre). */
@@ -76,23 +80,15 @@ export function AppProvider({ children }) {
     };
   }, []);
 
-  // Al abrir la página: recupera la sesión si hay token y carga el catálogo de skills.
+  // Al abrir la página: recupera la sesión si la cookie sigue vigente y carga el catálogo de skills.
   useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setToken(null);
-      dispatch({ type: 'session/clear' });
-      dispatch({ type: 'toast', toast: { message: 'Tu sesión expiró. Inicia sesión de nuevo.', tone: 'bad' } });
-    });
+    setUnauthorizedHandler(() => dispatch({ type: 'session/expired' }));
 
-    if (getToken()) {
-      api
-        .get('/me')
-        .then(({ data }) => dispatch({ type: 'session/set', session: data }))
-        .catch(() => {
-          setToken(null);
-          dispatch({ type: 'session/clear' });
-        });
-    }
+    api
+      .get('/me', undefined, { silent401: true })
+      .then(({ data }) => dispatch({ type: 'session/set', session: data }))
+      .catch(() => dispatch({ type: 'session/clear' }));
+
     actions.reloadSkills().catch(() => {});
   }, [actions]);
 

@@ -8,6 +8,7 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\AuthCookie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -44,7 +45,7 @@ class AuthController extends Controller
             return $user;
         });
 
-        return $this->respondWithToken($user, 201);
+        return $this->respondWithToken($user, $request, 201);
     }
 
     /** Valida las credenciales y entrega un token Bearer de Sanctum. */
@@ -68,7 +69,7 @@ class AuthController extends Controller
             ]);
         }
 
-        return $this->respondWithToken($user);
+        return $this->respondWithToken($user, $request);
     }
 
     /** Revoca solo el token con el que se hizo la petición. */
@@ -76,7 +77,9 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json(['message' => __('auth.logged_out')]);
+        return response()
+            ->json(['message' => __('auth.logged_out')])
+            ->withCookie(AuthCookie::forget());
     }
 
     /** Usuario autenticado con su perfil o empresa. */
@@ -99,12 +102,18 @@ class AuthController extends Controller
         return response()->json(['message' => __('auth.deactivated')]);
     }
 
-    private function respondWithToken(User $user, int $status = 200): JsonResponse
+    /**
+     * El navegador recibe el token en una cookie httpOnly; el campo `token` del JSON
+     * queda para clientes que no usan cookies (Postman, pruebas) y el frontend lo ignora.
+     */
+    private function respondWithToken(User $user, Request $request, int $status = 200): JsonResponse
     {
+        $token = $user->createToken('careertrack')->plainTextToken;
+
         return response()->json([
-            'token' => $user->createToken('careertrack')->plainTextToken,
+            'token' => $token,
             'user' => (new UserResource($this->withProfile($user)))->resolve(),
-        ], $status);
+        ], $status)->withCookie(AuthCookie::make($token, $request));
     }
 
     private function withProfile(User $user): User
