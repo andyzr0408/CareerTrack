@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useApp } from '../store/AppContext';
 import { initials } from '../lib/format';
 import useCountUp from '../hooks/useCountUp';
@@ -253,8 +254,9 @@ export function Modal({ open, title, onClose, children, footer, wide }) {
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4">
+  // Se dibuja en <body> para que ningún contenedor con animación o transform lo desplace.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 animate-fade bg-ink/50" onClick={onClose} aria-hidden="true" />
       <div
         ref={panel}
@@ -262,7 +264,7 @@ export function Modal({ open, title, onClose, children, footer, wide }) {
         aria-modal="true"
         aria-labelledby={titleId}
         className={cx(
-          'relative flex max-h-[92vh] w-full animate-pop flex-col rounded-t-2xl bg-surface shadow-2xl sm:rounded-2xl',
+          'relative flex max-h-[90vh] w-full animate-pop flex-col rounded-2xl bg-surface shadow-2xl',
           wide ? 'sm:max-w-2xl' : 'sm:max-w-md',
         )}
       >
@@ -277,7 +279,8 @@ export function Modal({ open, title, onClose, children, footer, wide }) {
         <div className="overflow-y-auto px-5 py-5">{children}</div>
         {footer && <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:justify-end">{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
