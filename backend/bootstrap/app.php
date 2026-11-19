@@ -17,8 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // El token viaja en una cookie httpOnly: se pasa a Authorization antes de auth:sanctum
-        $middleware->api(prepend: [AuthenticateFromCookie::class]);
+        // El token viaja en una cookie httpOnly: se pasa a Authorization antes de auth:sanctum.
+        // Va como middleware global para que siempre se ejecute antes que la autenticación.
+        $middleware->prepend(AuthenticateFromCookie::class);
 
         $middleware->alias([
             'role' => EnsureRole::class,
