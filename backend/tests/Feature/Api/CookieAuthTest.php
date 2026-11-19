@@ -4,6 +4,8 @@ namespace Tests\Feature\Api;
 
 use App\Models\User;
 use App\Support\AuthCookie;
+use Illuminate\Http\Request;
+use Laravel\Sanctum\Sanctum;
 
 /** El navegador guarda el token en una cookie httpOnly en lugar de leerlo con JavaScript. */
 class CookieAuthTest extends ApiTestCase
@@ -33,6 +35,15 @@ class CookieAuthTest extends ApiTestCase
         ])->assertCreated();
 
         $this->assertNotNull($response->getCookie(AuthCookie::NAME, false));
+    }
+
+    public function test_sanctum_reads_the_token_from_the_cookie(): void
+    {
+        $callback = Sanctum::$accessTokenRetrievalCallback;
+        $this->assertNotNull($callback, 'AppServiceProvider no registró getAccessTokenFromRequestUsing');
+
+        $request = Request::create('/api/me', 'GET', [], [AuthCookie::NAME => '1|abc']);
+        $this->assertSame('1|abc', $callback($request));
     }
 
     public function test_the_cookie_alone_authenticates_requests(): void
