@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react';
 import { useApp } from '../store/AppContext';
 import { initials } from '../lib/format';
+import useCountUp from '../hooks/useCountUp';
 
 export const cx = (...parts) => parts.filter(Boolean).join(' ');
 
@@ -59,7 +60,7 @@ export function Button({ variant = 'primary', size = 'md', className, type = 'bu
     <button
       type={type}
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-all duration-150 enabled:hover:-translate-y-0.5 enabled:hover:shadow-md enabled:active:translate-y-0 enabled:active:scale-95 disabled:cursor-not-allowed',
         size === 'sm' ? 'px-3 py-1.5 text-sm' : 'px-4 py-2.5 text-sm',
         BUTTON_VARIANTS[variant],
         className,
@@ -121,7 +122,7 @@ export function Segmented({ label, options, value, onChange, className = 'w-full
             aria-checked={active}
             onClick={() => onChange(o.value)}
             className={cx(
-              'flex-1 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors',
+              'flex-1 rounded-md px-3 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-95',
               active ? 'bg-surface text-ink shadow-sm' : 'text-muted hover:text-ink',
             )}
           >
@@ -147,11 +148,11 @@ export function SkillPicker({ all, value, onChange, label = 'Skills' }) {
             aria-pressed={on}
             onClick={() => toggle(skill)}
             className={cx(
-              'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium transition-colors',
+              'inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm font-medium transition-all duration-150 hover:-translate-y-0.5 active:scale-90',
               on ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-muted hover:border-muted hover:text-ink',
             )}
           >
-            {on && <Icon name="check" className="h-3.5 w-3.5" />}
+            {on && <Icon name="check" className="h-3.5 w-3.5 animate-pop" />}
             {skill}
           </button>
         );
@@ -171,7 +172,7 @@ const PILL_TONES = {
 
 export function Pill({ tone = 'neutral', children, className }) {
   return (
-    <span className={cx('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', PILL_TONES[tone], className)}>
+    <span className={cx('animate-pop inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold', PILL_TONES[tone], className)}>
       {children}
     </span>
   );
@@ -193,10 +194,12 @@ export function Avatar({ name, className }) {
 }
 
 export function Stat({ label, value, note, tone }) {
+  const animated = useCountUp(value);
+  const shown = typeof value === 'number' ? animated : value;
   return (
-    <div className="rounded-xl border border-line bg-surface p-5">
+    <div className="animate-rise rounded-xl border border-line bg-surface p-5 transition-all duration-200 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg">
       <p className="text-sm text-muted">{label}</p>
-      <p className={cx('mt-1 font-display text-3xl font-bold', tone === 'ok' ? 'text-ok' : tone === 'brand' ? 'text-brand' : 'text-ink')}>{value}</p>
+      <p className={cx('mt-1 font-display text-3xl font-bold tabular-nums', tone === 'ok' ? 'text-ok' : tone === 'brand' ? 'text-brand' : 'text-ink')}>{shown}</p>
       {note && <p className="mt-1 text-xs text-muted">{note}</p>}
     </div>
   );
@@ -204,7 +207,7 @@ export function Stat({ label, value, note, tone }) {
 
 export function EmptyState({ title, children, action }) {
   return (
-    <div className="rounded-xl border border-dashed border-line px-6 py-12 text-center">
+    <div className="animate-rise rounded-xl border border-dashed border-line px-6 py-12 text-center">
       <p className="font-display text-lg font-semibold">{title}</p>
       {children && <p className="mx-auto mt-1 max-w-sm text-sm text-muted">{children}</p>}
       {action && <div className="mt-4">{action}</div>}
@@ -295,7 +298,7 @@ export function Toast() {
         <div
           key={toast.id}
           className={cx(
-            'pointer-events-auto flex max-w-md animate-pop items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium shadow-lg',
+            'pointer-events-auto flex max-w-md animate-toast-in items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium shadow-lg',
             toast.tone === 'bad' ? 'bg-bad text-canvas' : 'bg-ink text-canvas',
           )}
         >
@@ -305,6 +308,31 @@ export function Toast() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ---------- Carga ---------- */
+/** Bloque gris con un brillo que lo recorre mientras llegan los datos. */
+export function Skeleton({ className }) {
+  return (
+    <div aria-hidden="true" className={cx('relative overflow-hidden rounded-lg bg-sunken', className)}>
+      <div className="absolute inset-0 -translate-x-full animate-shimmer bg-gradient-to-r from-transparent via-surface/70 to-transparent" />
+    </div>
+  );
+}
+
+export function CardSkeleton() {
+  return (
+    <div className="space-y-3 rounded-xl border border-line bg-surface p-5">
+      <Skeleton className="h-3 w-1/4" />
+      <Skeleton className="h-6 w-2/3" />
+      <Skeleton className="h-3 w-1/2" />
+      <div className="flex gap-2 pt-2">
+        <Skeleton className="h-5 w-16" />
+        <Skeleton className="h-5 w-20" />
+        <Skeleton className="h-5 w-14" />
+      </div>
     </div>
   );
 }

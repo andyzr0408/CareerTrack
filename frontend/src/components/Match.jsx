@@ -11,7 +11,7 @@ export function MatchMeter({ pct, className }) {
         <span className="text-xs text-muted">compatible</span>
       </div>
       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-sunken">
-        <div className={cx('h-full rounded-full transition-all duration-300', tone)} style={{ width: `${pct}%` }} />
+        <div className={cx('h-full animate-grow rounded-full transition-all duration-500', tone)} style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -22,7 +22,7 @@ export function SkillTags({ have, missing }) {
   return (
     <ul className="flex flex-wrap gap-1.5">
       {have.map((s) => (
-        <li key={s} className="inline-flex items-center gap-1 rounded-md bg-brand-soft px-2 py-0.5 text-xs font-semibold text-brand">
+        <li key={s} className="inline-flex items-center gap-1 rounded-md bg-brand-soft transition-transform hover:-translate-y-0.5 px-2 py-0.5 text-xs font-semibold text-brand">
           <Icon name="check" className="h-3 w-3" />
           {s}
           <span className="sr-only"> (la tienes)</span>

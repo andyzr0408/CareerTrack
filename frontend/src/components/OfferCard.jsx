@@ -7,7 +7,7 @@ import { placeLabel, salaryLabel, timeAgo } from '../lib/format';
 export default function OfferCard({ offer, match, onSave, onApply }) {
   const { saved, application } = offer;
   return (
-    <article className="rounded-xl border border-line bg-surface p-5 transition-colors hover:border-brand/40">
+    <article className="group rounded-xl border border-line bg-surface p-5 transition-all duration-200 hover:-translate-y-1 hover:border-brand/40 hover:shadow-lg">
       <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
         <div className="min-w-0">
           <p className="text-sm text-muted">
@@ -38,11 +38,11 @@ export default function OfferCard({ offer, match, onSave, onApply }) {
           onClick={onSave}
           aria-pressed={saved}
           className={cx(
-            'inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold transition-colors',
+            'inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-semibold transition-all active:scale-90',
             saved ? 'text-bad' : 'text-muted hover:text-ink',
           )}
         >
-          <Icon name="heart" className={cx('h-5 w-5', saved && 'fill-current')} />
+          <Icon key={String(saved)} name="heart" className={cx('h-5 w-5 transition-transform group-hover:scale-110', saved && 'animate-heart-pop fill-current')} />
           {saved ? 'Guardada' : 'Guardar'}
         </button>
 

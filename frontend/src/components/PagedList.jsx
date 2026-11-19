@@ -1,4 +1,4 @@
-import { Button, EmptyState, cx } from './ui';
+import { Button, CardSkeleton, EmptyState, cx } from './ui';
 import Pagination from './Pagination';
 
 /**
@@ -16,13 +16,19 @@ export default function PagedList({ query, empty, as: Tag = 'div', className = '
     );
   }
   if (loading && !items.length) {
-    return <p className="py-12 text-center text-sm text-muted" role="status">Cargando…</p>;
+    return (
+      <div className="space-y-4" role="status" aria-label="Cargando">
+        <CardSkeleton />
+        <CardSkeleton />
+        <CardSkeleton />
+      </div>
+    );
   }
   if (!items.length) return empty;
 
   return (
     <>
-      <Tag className={cx(className, 'transition-opacity', loading && 'opacity-60')} aria-busy={loading}>
+      <Tag className={cx(className, 'stagger transition-opacity', loading && 'opacity-60')} aria-busy={loading}>
         {items.map(children)}
       </Tag>
       <Pagination meta={meta} onPage={setPage} loading={loading} />

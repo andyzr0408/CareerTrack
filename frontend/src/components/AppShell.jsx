@@ -7,7 +7,7 @@ import { ROUTES } from '../routes';
 export function Logo({ className }) {
   return (
     <span className={cx('inline-flex items-center gap-2', className)}>
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink">CT</span>
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand font-display text-sm font-bold text-brand-ink transition-transform duration-300 hover:rotate-6 hover:scale-110">CT</span>
       <span className="font-display text-xl font-bold tracking-tight">CareerTrack</span>
     </span>
   );
@@ -20,9 +20,9 @@ export function ThemeToggle({ className }) {
       type="button"
       onClick={toggle}
       aria-label={dark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-      className={cx('rounded-lg p-2 text-muted transition-colors hover:bg-sunken hover:text-ink', className)}
+      className={cx('group rounded-lg p-2 text-muted transition-colors hover:bg-sunken hover:text-ink', className)}
     >
-      <Icon name={dark ? 'sun' : 'moon'} className="h-5 w-5" />
+      <Icon key={String(dark)} name={dark ? 'sun' : 'moon'} className="h-5 w-5 animate-pop transition-transform duration-300 group-hover:rotate-12" />
     </button>
   );
 }
@@ -75,7 +75,7 @@ export default function AppShell({ nav, section, onSection, children }) {
           ))}
         </nav>
       </header>
-      <main id="contenido" className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <main id="contenido" key={section} className="mx-auto max-w-6xl animate-rise px-4 py-8 sm:px-6">
         {children}
       </main>
       <Toast />
@@ -90,7 +90,7 @@ function NavButton({ item, active, onClick }) {
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cx(
-        'inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors',
+        'inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-all duration-200 active:scale-95',
         active ? 'bg-brand-soft text-brand' : 'text-muted hover:bg-sunken hover:text-ink',
       )}
     >
